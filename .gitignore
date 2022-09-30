@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+# ignore settings to keep keys secret
+sondage/settings.py
