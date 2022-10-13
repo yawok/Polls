@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 # ignore settings to keep keys secret
 sondage/settings.py
+
+.vscode

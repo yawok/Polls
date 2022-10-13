@@ -1,8 +1,9 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.db.models import F
 from django.views import generic
+from django.utils import timezone
 
 from .models import Question, Choice
 
@@ -11,13 +12,17 @@ class IndexView(generic.ListView):
     context_object_name = 'latest_question_list'
 
     def get_queryset(self):
-        """Return the last 5 published questions."""
-        return Question.objects.order_by('-pub_date')[:5]
+        """Return the last 5 published questions up until now(not including future questions)."""
+        return Question.objects.filter(pub_date__lte=timezone.now()).filter().order_by('-pub_date').exclude(choice__isnull=True)[:5]
 
 
 class DetailView(generic.DetailView):
     model = Question
     template_name = 'polls/detail.html'
+
+    def get_queryset(self):
+        """Excludes questions that aren't published yet."""
+        return Question.objects.filter(pub_date__lte=timezone.now()).exclude(choice__isnull=True)
 
 
 
@@ -25,10 +30,15 @@ class ResultsView(generic.DetailView):
     model = Question
     template_name = 'polls/results.html'
 
+    def get_queryset(self):
+        """Exclude all questions that aren't published yet."""
+        return Question.objects.filter(pub_date__lte=timezone.now()).exclude(choice__isnull=True)
+
 
 def vote(request, question_id):
     """Voting page for question choices."""
-    question = get_object_or_404(Question, pk=question_id)
+    queryset = Question.objects.filter(pub_date__lte=timezone.now()).exclude(choice__isnull=True)
+    question = get_object_or_404(queryset, pk=question_id)
     try:
         selected_choice = question.choice_set.get(pk=request.POST["choice"])
     except (KeyError, Choice.DoesNotExist):
