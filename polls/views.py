@@ -4,8 +4,10 @@ from django.urls import reverse
 from django.db.models import F
 from django.views import generic
 from django.utils import timezone
+from django.forms import modelformset_factory
 
 from .models import Question, Choice
+from .forms import QuestionForm
 
 class IndexView(generic.ListView):
     template_name = 'polls/index.html'
@@ -50,4 +52,21 @@ def vote(request, question_id):
     return HttpResponseRedirect(reverse("polls:results", args=(question.id,)))
     
 
+def add_question(request):
+    """Add new question with choices"""
+    ChoiceFormSet = modelformset_factory(Choice, fields=('choice_text',), extra=3,)
+    if request.method == 'POST':
+        question_form = QuestionForm(request.POST)
+        choice_formset = ChoiceFormSet(request.POST)
+        if question_form.is_valid() and choice_formset.is_valid():
+            question = question_form.save()
+            choices = choice_formset.save(commit=False)
+            for choice in choices:
+                choice.question = question
+                choice.save()
+            return HttpResponseRedirect(reverse("polls:index"))
+    else:
+        question_form = QuestionForm()
+        choice_formset = ChoiceFormSet(queryset=Choice.objects.none())
+    return render(request, 'polls/add_question.html', {'question_form': question_form, 'choice_formset': choice_formset})
 

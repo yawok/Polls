@@ -1,0 +1,13 @@
+<form action="{% url 'polls:add_question' %}" method='post'>
+    {% csrf_token %}
+    <h1> Add a question </h1>
+    {{ question_form }}
+    {{ form}}
+    {{ choice_formset.management_form}}
+    <table>
+        {% for form in choice_formset %}
+        {{ form.as_table }}
+        {% endfor %}
+    </table>
+    <input type="Submit" value="Post Question">
+</form>

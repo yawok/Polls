@@ -1,3 +1,4 @@
+from random import choice
 from django.test import TestCase
 from django.utils import timezone
 from django.urls import reverse
@@ -5,6 +6,8 @@ from django.urls import reverse
 import datetime, threading
 
 from .models import Question, Choice
+from .forms import QuestionForm
+from django.forms import modelformset_factory
 
 class QuestionModelTests(TestCase):
     """Test Question model."""
@@ -183,6 +186,76 @@ class VoteViewTests(TestCase):
         self.assertEqual(choice.vote, 0)
             
     
-       
+def create_choice_formset(question=None, data = {
+    'form-TOTAL_FORMS': '1',
+    'form-INITIAL_FORMS': '0',
+    'form-0-choice_text': 'A random dude',
+    }):
+    """Create 1 choice from a choice formset for a question"""
+    ChoiceFormSet = modelformset_factory(Choice, fields=('choice_text',), extra=3,)
+    choice_formset = ChoiceFormSet(data)
+    choice_formset.save(commit=False)
+    choice_formset[0].question = question
+    return choice_formset[0].save()
+
+
+def create_question_from_form(days, question_text="What year is it?"):
+    """Create a new question from forms with question text and days ofset to now.(- for past dates and vice versa)"""
+
+    time = timezone.now() + datetime.timedelta(days=days)
+    data = {'question_text': question_text, 'pub_date': time}
+    question = QuestionForm(data=data)
+    return question.save()
+    
+    
+class AddQuestionViewTests(TestCase):
+    """Tests for Add Question view."""
+    # test empty form
+    # test form without choices
+    # test form with choices but without questions
+    # test form with repeated question
+    # test form with question and choices
+    def test_empty_form(self):
+        """Empty forms should be invalid and errors should be 1"""
+        question_form = QuestionForm(data={})
+        self.assertFalse(question_form.is_valid())
+        self.assertEqual(len(question_form.errors), 2)
         
         
+    def test_question_form_without_choices(self):
+        """Questions without choices created with forms should not be shown on the screen."""
+        
+        question_text="What year is it?"
+        time = timezone.now() + datetime.timedelta(days=-1)
+        data = {'question_text': question_text, 'pub_date': time}
+        question = QuestionForm(data=data)
+        self.assertTrue(question.is_valid())
+        self.assertEqual(len(question.errors), 0)
+        
+        response = self.client.get(reverse('polls:index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No polls are available.")
+        self.assertQuerysetEqual(response.context['latest_question_list'], [])
+        
+        
+    def test_question_with_choices(self):
+        """Past question with choices are displayed on the index page."""
+        question_text="Who owns Tesla?"
+        time = timezone.now() + datetime.timedelta(days=-1)
+        questionform_data = {'question_text': question_text, 'pub_date': time}
+        question_form = QuestionForm(data=questionform_data)
+        question = question_form.save()
+         
+        choice_formset_data = {
+            'form-TOTAL_FORMS': '1',
+            'form-INITIAL_FORMS': '0',
+            'form-0-choice_text': 'A random dude',
+            }
+        ChoiceFormSet = modelformset_factory(Choice, fields=('choice_text',), extra=3,)
+        choice_form = ChoiceFormSet(data=choice_formset_data)
+        choice = choice_form.save(commit=False)
+        choice[0].question = question
+        choice[0].save() 
+
+        response = self.client.get(reverse('polls:index'))
+        self.assertQuerysetEqual(response.context['latest_question_list'], [question])
