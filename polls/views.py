@@ -15,7 +15,16 @@ class IndexView(generic.ListView):
 
     def get_queryset(self):
         """Return the last 5 published questions up until now(not including future questions)."""
-        return Question.objects.filter(pub_date__lte=timezone.now()).filter().order_by('-pub_date').exclude(choice__isnull=True)[:5]
+        return Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date').exclude(choice__isnull=True)[:5]
+
+
+class PublishedQuestionsView(generic.ListView):
+    template_name = 'polls/published_questions.html'
+    context_object_name = 'published_questions_list'
+    
+    def get_queryset(self):
+        """Return all published questions"""
+        return Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date').exclude(choice__isnull=True)
 
 
 class DetailView(generic.DetailView):
